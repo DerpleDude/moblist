@@ -1,81 +1,81 @@
 --[[
     A list of mobs with configurable filters.
 ]]
-local mq = require('mq')
-local ImGui = require 'ImGui'
-local Icons = require('mq.ICONS')
-local gIcon = Icons.MD_SETTINGS
+local mq                               = require('mq')
+local ImGui                            = require 'ImGui'
+local Icons                            = require('mq.ICONS')
+local gIcon                            = Icons.MD_SETTINGS
 
-local spawns = {}
-local running = true
-local myName = mq.TLO.Me.DisplayName()
-local window_flags = bit32.bor(ImGuiWindowFlags.None)
-local treeview_table_flags = bit32.bor(ImGuiTableFlags.Reorderable, ImGuiTableFlags.Hideable,
+local spawns                           = {}
+local running                          = true
+local myName                           = mq.TLO.Me.DisplayName()
+local window_flags                     = bit32.bor(ImGuiWindowFlags.None)
+local treeview_table_flags             = bit32.bor(ImGuiTableFlags.Reorderable, ImGuiTableFlags.Hideable,
     ImGuiTableFlags.Borders, ImGuiTableFlags.Resizable, ImGuiTableFlags.Sortable, ImGuiTableFlags.ScrollY)
-local openGUI, drawGUI = true, true
-local angle = 0
-local size = 25
-local column_count = 9
-local script = 'MobList'
-local direction_arrow = false
-local LoadTheme = require('lib.theme_loader')
-local defaults = require('lib.themes')
-local themeFile = string.format('%s/MyThemeZ.lua', mq.configDir)
-local configFile = string.format('%s/moblist.lua', mq.configDir)
-local themeName = 'Default'
+local openGUI, drawGUI                 = true, true
+local angle                            = 0
+local size                             = 25
+local column_count                     = 9
+local script                           = 'MobList'
+local direction_arrow                  = false
+local LoadTheme                        = require('lib.theme_loader')
+local defaults                         = require('lib.themes')
+local themeFile                        = string.format('%s/MyThemeZ.lua', mq.configDir)
+local configFile                       = string.format('%s/moblist.lua', mq.configDir)
+local themeName                        = 'Default'
 local theme, settings, defaultSettings = {}, {}, {}
-local mobheader = "\ay[\agMob List\ay]"
+local mobheader                        = "\ay[\agMob List\ay]"
 
-local updated_data = false
+local updated_data                     = false
 
-local colors = {
-    red = IM_COL32(255, 0, 0, 255),
-    yellow = IM_COL32(255, 255, 0, 255),
-    white = IM_COL32(255, 255, 255, 255),
-    blue = IM_COL32(0, 0, 255, 2551),
+local colors                           = {
+    red       = IM_COL32(255, 0, 0, 255),
+    yellow    = IM_COL32(255, 255, 0, 255),
+    white     = IM_COL32(255, 255, 255, 255),
+    blue      = IM_COL32(0, 0, 255, 2551),
     lightBlue = IM_COL32(0, 255, 255, 255),
-    green = IM_COL32(0, 255, 0, 255),
-    grey = IM_COL32(158, 158, 158, 255),
-    purple = IM_COL32(255, 0, 255, 255),
+    green     = IM_COL32(0, 255, 0, 255),
+    grey      = IM_COL32(158, 158, 158, 255),
+    purple    = IM_COL32(255, 0, 255, 255),
 }
 
-local filter = {
-    ['LevelLow'] = 1,
-    ['LevelHigh'] = 135,
-    ['Name'] = '',
-    ['RangeLow'] = 0,
-    ['RangeHigh'] = 5000,
-    ['Body'] = '',
-    ['Race'] = '',
-    ['Class'] = '',
-    ['Type'] = { 'PC', 'NPC', 'Untargetable', 'Mount', 'Pet', 'Corpse', 'Chest', 'Trigger', 'Trap', 'Timer', 'Item', 'Mercenary', 'Aura', 'Object', 'Banner', 'Campfire', 'Flyer', },
+local filter                           = {
+    ['LevelLow']      = 1,
+    ['LevelHigh']     = 135,
+    ['Name']          = '',
+    ['RangeLow']      = 0,
+    ['RangeHigh']     = 5000,
+    ['Body']          = '',
+    ['Race']          = '',
+    ['Class']         = '',
+    ['Type']          = { 'PC', 'NPC', 'Untargetable', 'Mount', 'Pet', 'Corpse', 'Chest', 'Trigger', 'Trap', 'Timer', 'Item', 'Mercenary', 'Aura', 'Object', 'Banner', 'Campfire', 'Flyer', },
     ['Type_Selected'] = 2,
-    ['name_reverse'] = false,
-    ['body_reverse'] = false,
-    ['race_reverse'] = false,
+    ['name_reverse']  = false,
+    ['body_reverse']  = false,
+    ['race_reverse']  = false,
     ['class_reverse'] = false,
-    ['conColor'] = true,
+    ['conColor']      = true,
 }
 
-defaultSettings = {
+defaultSettings                        = {
     [script] = {
-        Scale = 1.0,
+        Scale     = 1.0,
         LoadTheme = 'Default',
-        locked = false,
+        locked    = false,
     },
 }
 
-local ColumnID_ID = 0
-local ColumnID_Lvl = 1
-local ColumnID_DisplayName = 2
-local ColumnID_Name = 3
-local ColumnID_Distance = 4
-local ColumnID_Loc = 5
-local ColumnID_Body = 6
-local ColumnID_Race = 7
-local ColumnID_Class = 8
-local ColumnID_Direction = 9
-local themeID = 1
+local ColumnID_ID                      = 0
+local ColumnID_Lvl                     = 1
+local ColumnID_DisplayName             = 2
+local ColumnID_Name                    = 3
+local ColumnID_Distance                = 4
+local ColumnID_Loc                     = 5
+local ColumnID_Body                    = 6
+local ColumnID_Race                    = 7
+local ColumnID_Class                   = 8
+local ColumnID_Direction               = 9
+local themeID                          = 1
 function RotatePoint(p, cx, cy, angle)
     local radians = math.rad(angle)
     local cosA = math.cos(radians)
@@ -291,10 +291,26 @@ local function getConColor(spawn)
     return textColor
 end
 
+local function reverseToggle(id, value, tooltip)
+    if value then
+        ImGui.PushStyleColor(ImGuiCol.Button, IM_COL32(180, 100, 0, 255))
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, IM_COL32(210, 130, 0, 255))
+    else
+        ImGui.PushStyleColor(ImGuiCol.Button, IM_COL32(60, 60, 60, 255))
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, IM_COL32(90, 90, 90, 255))
+    end
+    local clicked = ImGui.Button(Icons.MD_SWAP_HORIZ .. '##' .. id)
+    ImGui.PopStyleColor(2)
+    if ImGui.IsItemHovered() then ImGui.SetTooltip(tooltip or 'Reverse filter') end
+    if clicked then value = not value end
+    return value
+end
+
 local function displayGUI()
     if not openGUI then running = false end
     local ColorCount, StyleCount = LoadTheme.StartTheme(theme.Theme[themeID])
     openGUI, drawGUI = ImGui.Begin("Mob List##" .. myName, openGUI, window_flags)
+
     if drawGUI and not mq.TLO.Me.Zoning() then
         if ImGui.Button(gIcon .. '##MobList') then
             ImGui.OpenPopup('MobListPopup')
@@ -328,109 +344,141 @@ local function displayGUI()
         if ImGui.IsMouseReleased(1) and ImGui.IsItemHovered() then
             ImGui.OpenPopup('MobListPopup')
         end
-        ImGui.SameLine()
-        ImGui.Text("Level Range")
-        ImGui.SameLine()
-        ImGui.PushItemWidth(45)
-        filter.LevelLow = ImGui.InputInt('##LowLvl', filter.LevelLow, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Lowest level to display')
-        end
-        ImGui.SameLine()
-        filter.LevelHigh = ImGui.InputInt('##HighLvl', filter.LevelHigh, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Highest level to display')
-        end
-        ImGui.PopItemWidth()
-        ImGui.SameLine()
-        ImGui.Text("Name")
-        ImGui.SameLine()
-        ImGui.PushItemWidth(200)
-        filter.Name = ImGui.InputText('##Name', filter.Name, 0)
-        ImGui.PopItemWidth()
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Name filter')
-        end
-        ImGui.SameLine()
-        filter['name_reverse'] = ImGui.Checkbox("##NameReverse", filter['name_reverse'])
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Reverse Filter Name')
-        end
-        ImGui.Text("Distance")
-        ImGui.SameLine()
-        ImGui.PushItemWidth(50)
-        ImGui.SameLine()
-        filter.RangeLow = ImGui.InputInt('##RangeLow', filter.RangeLow, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Minimum Distance (Distance below this number will not be shown)')
-        end
-        ImGui.SameLine()
-        filter.RangeHigh = ImGui.InputInt('##RangeHigh', filter.RangeHigh, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Maximum Distance (Distance above this number will not be shown)')
-        end
-        ImGui.PopItemWidth()
-        ImGui.SameLine()
-        ImGui.PushItemWidth(85)
-        filter.Type_Selected = ImGui.Combo('##TypeCombo', filter.Type_Selected, filter.Type)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Type of mobs to display')
-        end
-        ImGui.PopItemWidth()
-        ImGui.SameLine()
-        ImGui.Text("Direction")
-        ImGui.SameLine()
-        direction_arrow = ImGui.Checkbox("##DirectionArrow", direction_arrow)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Display directional arrow')
-        end
-        ImGui.SameLine()
-        if ImGui.Button("Clear Highlights") then
-            mq.cmd('/highlight reset')
-        end
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Clear highlighted mob list')
-        end
-        ImGui.Text("Body")
-        ImGui.SameLine()
-        ImGui.PushItemWidth(100)
-        filter.Body = ImGui.InputText('##Body', filter.Body, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Body type filter')
-        end
-        ImGui.PopItemWidth()
-        ImGui.SameLine()
-        filter['body_reverse'] = ImGui.Checkbox("##BodyReverse", filter['body_reverse'])
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Reverse Filter Body Type')
-        end
-        ImGui.SameLine()
-        ImGui.Text("Race")
-        ImGui.SameLine()
-        ImGui.PushItemWidth(100)
-        filter.Race = ImGui.InputText('##Race', filter.Race, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Race filter')
-        end
-        ImGui.PopItemWidth()
-        ImGui.SameLine()
-        filter['race_reverse'] = ImGui.Checkbox("##RaceReverse", filter['race_reverse'])
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Reverse Filter Race')
-        end
-        ImGui.SameLine()
-        ImGui.Text("Class")
-        ImGui.SameLine()
-        ImGui.PushItemWidth(100)
-        filter.Class = ImGui.InputText('##Class', filter.Class, 0)
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Class filter')
-        end
-        ImGui.PopItemWidth()
-        ImGui.SameLine()
-        filter['class_reverse'] = ImGui.Checkbox("##ClassReverse", filter['class_reverse'])
-        if ImGui.IsItemHovered() then
-            ImGui.SetTooltip('Reverse Filter Class')
+
+        if ImGui.CollapsingHeader("Filters", ImGuiTreeNodeFlags.DefaultOpen) then
+            local filterItems = {
+                {
+                    width = 220,
+                    render = function()
+                        ImGui.Text("Level Range")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(45)
+                        filter.LevelLow = ImGui.InputInt('##LowLvl', filter.LevelLow, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Lowest level to display') end
+                        ImGui.SameLine()
+                        filter.LevelHigh = ImGui.InputInt('##HighLvl', filter.LevelHigh, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Highest level to display') end
+                        ImGui.PopItemWidth()
+                    end,
+                },
+                {
+                    width = 270,
+                    render = function()
+                        ImGui.Text("Name")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(200)
+                        filter.Name = ImGui.InputText('##Name', filter.Name, 0)
+                        ImGui.PopItemWidth()
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Name filter') end
+                        ImGui.SameLine()
+                        filter['name_reverse'] = reverseToggle('NameReverse', filter['name_reverse'], 'Reverse Filter Name')
+                    end,
+                },
+                {
+                    width = 210,
+                    render = function()
+                        ImGui.Text("Distance")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(50)
+                        filter.RangeLow = ImGui.InputInt('##RangeLow', filter.RangeLow, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Minimum Distance') end
+                        ImGui.SameLine()
+                        filter.RangeHigh = ImGui.InputInt('##RangeHigh', filter.RangeHigh, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Maximum Distance') end
+                        ImGui.PopItemWidth()
+                    end,
+                },
+                {
+                    width = 115,
+                    render = function()
+                        ImGui.PushItemWidth(85)
+                        filter.Type_Selected = ImGui.Combo('##TypeCombo', filter.Type_Selected, filter.Type)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Type of mobs to display') end
+                        ImGui.PopItemWidth()
+                    end,
+                },
+                {
+                    width = 130,
+                    render = function()
+                        ImGui.Text("Direction")
+                        ImGui.SameLine()
+                        direction_arrow = ImGui.Checkbox("##DirectionArrow", direction_arrow)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Display directional arrow') end
+                    end,
+                },
+                {
+                    width = 130,
+                    render = function()
+                        if ImGui.Button("Clear Highlights") then mq.cmd('/highlight reset') end
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Clear highlighted mob list') end
+                    end,
+                },
+                {
+                    width = 195,
+                    render = function()
+                        ImGui.Text("Body")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(100)
+                        filter.Body = ImGui.InputText('##Body', filter.Body, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Body type filter') end
+                        ImGui.PopItemWidth()
+                        ImGui.SameLine()
+                        filter['body_reverse'] = reverseToggle('BodyReverse', filter['body_reverse'], 'Reverse Filter Body Type')
+                    end,
+                },
+                {
+                    width = 195,
+                    render = function()
+                        ImGui.Text("Race")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(100)
+                        filter.Race = ImGui.InputText('##Race', filter.Race, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Race filter') end
+                        ImGui.PopItemWidth()
+                        ImGui.SameLine()
+                        filter['race_reverse'] = reverseToggle('RaceReverse', filter['race_reverse'], 'Reverse Filter Race')
+                    end,
+                },
+                {
+                    width = 195,
+                    render = function()
+                        ImGui.Text("Class")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(100)
+                        filter.Class = ImGui.InputText('##Class', filter.Class, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Class filter') end
+                        ImGui.PopItemWidth()
+                        ImGui.SameLine()
+                        filter['class_reverse'] = reverseToggle('ClassReverse', filter['class_reverse'], 'Reverse Filter Class')
+                    end,
+                },
+            }
+
+            local availWidth = ImGui.GetWindowWidth()
+            local i = 1
+            while i <= #filterItems do
+                local rowWidth = 0
+                local rowEnd = i
+                while rowEnd <= #filterItems do
+                    local nextWidth = filterItems[rowEnd].width
+                    if rowWidth + nextWidth > availWidth and rowEnd > i then break end
+                    rowWidth = rowWidth + nextWidth
+                    rowEnd = rowEnd + 1
+                end
+                local numCols = rowEnd - i
+                if ImGui.BeginTable('##filter_row_' .. i, numCols, bit32.bor(ImGuiTableFlags.None)) then
+                    for j = i, rowEnd - 1 do
+                        ImGui.TableSetupColumn('##fc_' .. j, ImGuiTableColumnFlags.WidthFixed, filterItems[j].width)
+                    end
+                    ImGui.TableNextRow()
+                    for j = i, rowEnd - 1 do
+                        ImGui.TableNextColumn()
+                        filterItems[j].render()
+                    end
+                    ImGui.EndTable()
+                end
+                i = rowEnd
+            end
         end
         if direction_arrow == true then
             column_count = 10
