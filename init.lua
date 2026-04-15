@@ -315,6 +315,9 @@ local function displayGUI()
         if ImGui.Button(gIcon .. '##MobList') then
             ImGui.OpenPopup('MobListPopup')
         end
+        ImGui.SameLine()
+        if ImGui.Button(Icons.MD_HIGHLIGHT_OFF .. '##ClearHighlights') then mq.cmd('/highlight reset') end
+        if ImGui.IsItemHovered() then ImGui.SetTooltip('Clear highlighted mob list') end
 
         -- Place the popup context outside the button conditional to have it reactively check for the opening condition
         if ImGui.BeginPopup('MobListPopup') then
@@ -333,11 +336,10 @@ local function displayGUI()
                 ImGui.EndMenu()
             end
             if ImGui.MenuItem('Name as consider color', '', filter.conColor) then
-                if filter.conColor == true then
-                    filter.conColor = false
-                elseif filter.conColor == false then
-                    filter.conColor = true
-                end
+                filter.conColor = not filter.conColor
+            end
+            if ImGui.MenuItem('Display direction arrow', '', direction_arrow) then
+                direction_arrow = not direction_arrow
             end
             ImGui.EndPopup()
         end
@@ -350,9 +352,9 @@ local function displayGUI()
                 {
                     width = 220,
                     render = function()
-                        ImGui.Text("Level Range")
+                        ImGui.Text("Lvl Rng")
                         ImGui.SameLine()
-                        ImGui.PushItemWidth(45)
+                        ImGui.PushItemWidth(35)
                         filter.LevelLow = ImGui.InputInt('##LowLvl', filter.LevelLow, 0)
                         if ImGui.IsItemHovered() then ImGui.SetTooltip('Lowest level to display') end
                         ImGui.SameLine()
@@ -363,6 +365,7 @@ local function displayGUI()
                 },
                 {
                     width = 270,
+                    hasReverse = true,
                     render = function()
                         ImGui.Text("Name")
                         ImGui.SameLine()
@@ -377,7 +380,7 @@ local function displayGUI()
                 {
                     width = 210,
                     render = function()
-                        ImGui.Text("Distance")
+                        ImGui.Text("Dist")
                         ImGui.SameLine()
                         ImGui.PushItemWidth(50)
                         filter.RangeLow = ImGui.InputInt('##RangeLow', filter.RangeLow, 0)
@@ -398,23 +401,8 @@ local function displayGUI()
                     end,
                 },
                 {
-                    width = 130,
-                    render = function()
-                        ImGui.Text("Direction")
-                        ImGui.SameLine()
-                        direction_arrow = ImGui.Checkbox("##DirectionArrow", direction_arrow)
-                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Display directional arrow') end
-                    end,
-                },
-                {
-                    width = 130,
-                    render = function()
-                        if ImGui.Button("Clear Highlights") then mq.cmd('/highlight reset') end
-                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Clear highlighted mob list') end
-                    end,
-                },
-                {
                     width = 195,
+                    hasReverse = true,
                     render = function()
                         ImGui.Text("Body")
                         ImGui.SameLine()
@@ -428,6 +416,7 @@ local function displayGUI()
                 },
                 {
                     width = 195,
+                    hasReverse = true,
                     render = function()
                         ImGui.Text("Race")
                         ImGui.SameLine()
@@ -441,6 +430,7 @@ local function displayGUI()
                 },
                 {
                     width = 195,
+                    hasReverse = true,
                     render = function()
                         ImGui.Text("Class")
                         ImGui.SameLine()
@@ -454,13 +444,22 @@ local function displayGUI()
                 },
             }
 
+            local spacing     = ImGui.GetStyle().ItemSpacing.x
+            local iconW       = ImGui.GetFrameHeight() + spacing -- square icon button + one spacing gap
+
+            -- Compute actual widths: fixed items use their declared width, items with a
+            -- reverse toggle add the icon button size on top.
+            for _, item in ipairs(filterItems) do
+                item.actualWidth = item.width + (item.hasReverse and iconW or 0)
+            end
+
             local availWidth = ImGui.GetWindowWidth()
             local i = 1
             while i <= #filterItems do
                 local rowWidth = 0
                 local rowEnd = i
                 while rowEnd <= #filterItems do
-                    local nextWidth = filterItems[rowEnd].width
+                    local nextWidth = filterItems[rowEnd].actualWidth
                     if rowWidth + nextWidth > availWidth and rowEnd > i then break end
                     rowWidth = rowWidth + nextWidth
                     rowEnd = rowEnd + 1
@@ -468,7 +467,7 @@ local function displayGUI()
                 local numCols = rowEnd - i
                 if ImGui.BeginTable('##filter_row_' .. i, numCols, bit32.bor(ImGuiTableFlags.None)) then
                     for j = i, rowEnd - 1 do
-                        ImGui.TableSetupColumn('##fc_' .. j, ImGuiTableColumnFlags.WidthFixed, filterItems[j].width)
+                        ImGui.TableSetupColumn('##fc_' .. j, ImGuiTableColumnFlags.WidthFixed, filterItems[j].actualWidth)
                     end
                     ImGui.TableNextRow()
                     for j = i, rowEnd - 1 do
