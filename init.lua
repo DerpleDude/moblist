@@ -176,7 +176,8 @@ local function matchFilters(spawn)
 end
 
 local function create_spawn_list()
-    spawns = mq.getFilteredSpawns(matchFilters)
+    local new_spawns = mq.getFilteredSpawns(matchFilters)
+    spawns = new_spawns
     updated_data = true
 end
 
@@ -308,6 +309,7 @@ end
 
 local function displayGUI()
     if not openGUI then running = false end
+    if mq.TLO.MacroQuest.GameState() ~= "INGAME" then return end
     local ColorCount, StyleCount = LoadTheme.StartTheme(theme.Theme[themeID])
     openGUI, drawGUI = ImGui.Begin("Mob List##" .. myName, openGUI, window_flags)
 
