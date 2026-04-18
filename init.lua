@@ -48,6 +48,7 @@ local filter                           = {
     ['Body']          = '',
     ['Race']          = '',
     ['Class']         = '',
+    ['Surname']       = '',
     ['Type']          = { 'PC', 'NPC', 'Untargetable', 'Mount', 'Pet', 'Corpse', 'Chest', 'Trigger', 'Trap', 'Timer', 'Item', 'Mercenary', 'Aura', 'Object', 'Banner', 'Campfire', 'Flyer', },
     ['Type_Selected'] = 2,
     ['name_reverse']  = false,
@@ -75,6 +76,7 @@ local ColumnID_Body                    = 6
 local ColumnID_Race                    = 7
 local ColumnID_Class                   = 8
 local ColumnID_Direction               = 9
+local ColumnID_Surname                 = 10
 local themeID                          = 1
 function RotatePoint(p, cx, cy, angle)
     local radians = math.rad(angle)
@@ -171,6 +173,11 @@ local function matchFilters(spawn)
         if string.find(string.lower(spawn.Class()), string.lower(filter.Class)) then return false end
     else
         if not string.find(string.lower(spawn.Class()), string.lower(filter.Class)) then return false end
+    end
+    if filter['surname_reverse'] then
+        if string.find(string.lower(spawn.Surname() or ""), string.lower(filter.Surname)) then return false end
+    else
+        if not string.find(string.lower(spawn.Surname() or ""), string.lower(filter.Surname)) then return false end
     end
     return true
 end
@@ -444,6 +451,20 @@ local function displayGUI()
                         filter['class_reverse'] = reverseToggle('ClassReverse', filter['class_reverse'], 'Reverse Filter Class')
                     end,
                 },
+                {
+                    width = 195,
+                    hasReverse = true,
+                    render = function()
+                        ImGui.Text("Surname")
+                        ImGui.SameLine()
+                        ImGui.PushItemWidth(100)
+                        filter.Surname = ImGui.InputText('##Surname', filter.Surname, 0)
+                        if ImGui.IsItemHovered() then ImGui.SetTooltip('Surname filter') end
+                        ImGui.PopItemWidth()
+                        ImGui.SameLine()
+                        filter['surname_reverse'] = reverseToggle('SurnameReverse', filter['surname_reverse'], 'Reverse Filter Surname')
+                    end,
+                },
             }
 
             local spacing     = ImGui.GetStyle().ItemSpacing.x
@@ -482,9 +503,9 @@ local function displayGUI()
             end
         end
         if direction_arrow == true then
-            column_count = 10
+            column_count = 11
         else
-            column_count = 9
+            column_count = 10
         end
         if ImGui.BeginTable('##List_table', column_count, treeview_table_flags) then
             ImGui.TableSetupColumn("ID", 0, 50, ColumnID_ID)
@@ -496,6 +517,7 @@ local function displayGUI()
             ImGui.TableSetupColumn("Body Type", 0, 80, ColumnID_Body)
             ImGui.TableSetupColumn("Race", 0, 80, ColumnID_Race)
             ImGui.TableSetupColumn("Class", 0, 70, ColumnID_Class)
+            ImGui.TableSetupColumn("Surname", 0, 70, ColumnID_Surname)
             if direction_arrow == true then
                 ImGui.TableSetupColumn("Direction", ImGuiTableColumnFlags.NoSort, 20, ColumnID_Direction)
             end
@@ -574,6 +596,9 @@ local function displayGUI()
                     ImGui.TableNextColumn()
                     ImGui.Text(item.Class())
                     ImGui.TableNextColumn()
+                    ImGui.Text(item.Surname())
+                    ImGui.TableNextColumn()
+
                     if direction_arrow == true then
                         local cursorScreenPos = ImGui.GetCursorScreenPosVec()
                         --angle = getRelativeDirection(item.HeadingTo())
