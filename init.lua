@@ -203,6 +203,8 @@ end
 
 local current_sort_specs = nil
 local function CompareWithSortSpecs(a, b)
+    if not current_sort_specs then return false end
+
     for n = 1, current_sort_specs.SpecsCount, 1 do
         -- Here we identify columns using the ColumnUserID value that we ourselves passed to TableSetupColumn()
         -- We could also choose to identify columns based on their index (sort_spec.ColumnIndex), which is simpler!
@@ -533,7 +535,7 @@ local function displayGUI()
             end
             ImGui.TableSetupScrollFreeze(0, 1)
             local sort_specs = ImGui.TableGetSortSpecs()
-            if updated_data then
+            if updated_data and sort_specs then
                 sort_specs.SpecsDirty = true
                 updated_data = false
             end
@@ -556,67 +558,67 @@ local function displayGUI()
             while clipper:Step() do
                 for row_n = clipper.DisplayStart, clipper.DisplayEnd - 1, 1 do
                     local item = spawns[row_n + 1]
-                    if item.ID() == nil or item.Level() == nil or item.DisplayName() == nil or item.Name() == nil then break end
-                    if item.Distance() == nil or item.Loc() == nil or item.Race() == nil then break end
-                    if item.Race() == nil or item.Class() == nil then break end
-                    ImGui.PushID(item)
-                    ImGui.TableNextRow()
-                    ImGui.TableNextColumn()
-                    ImGui.Selectable(tostring(item.ID()), false, ImGuiSelectableFlags.SpanAllColumns)
-                    if ImGui.IsItemHovered() then
-                        if ImGui.IsMouseReleased(ImGuiMouseButton.Right) then
-                            printf("%s \agHighlighting mobs named \ar%s", mobheader, item.DisplayName())
-                            mq.cmdf('/highlight "%s"', item.DisplayName())
-                        end
-                        if ImGui.IsMouseReleased(ImGuiMouseButton.Left) then
-                            if ImGui.IsKeyDown(ImGuiKey.LeftCtrl) or ImGui.IsKeyPressed(ImGuiKey.RightCtrl) then
-                                printf("%s \agNavigating \aogroup \agto \ar%s \ag ID \ar%s", mobheader,
-                                    item.DisplayName(),
-                                    item.ID())
-                                mq.cmdf('/dgae /nav id %s', item.ID())
-                            else
-                                printf("%s \agNavigating \aoself \agto \ar%s \ag ID \ar%s", mobheader, item.Name(),
-                                    item.ID())
-                                mq.cmdf('/nav id %s', item.ID())
+                    if (item.ID() or 0) > 0 then
+                        -- Valid spawn, continue
+                        ImGui.PushID(item)
+                        ImGui.TableNextRow()
+                        ImGui.TableNextColumn()
+                        ImGui.Selectable(tostring(item.ID() or 0), false, ImGuiSelectableFlags.SpanAllColumns)
+                        if ImGui.IsItemHovered() then
+                            if ImGui.IsMouseReleased(ImGuiMouseButton.Right) then
+                                printf("%s \agHighlighting mobs named \ar%s", mobheader, item.DisplayName())
+                                mq.cmdf('/highlight "%s"', item.DisplayName())
+                            end
+                            if ImGui.IsMouseReleased(ImGuiMouseButton.Left) then
+                                if ImGui.IsKeyDown(ImGuiKey.LeftCtrl) or ImGui.IsKeyPressed(ImGuiKey.RightCtrl) then
+                                    printf("%s \agNavigating \aogroup \agto \ar%s \ag ID \ar%s", mobheader,
+                                        item.DisplayName(),
+                                        item.ID())
+                                    mq.cmdf('/dgae /nav id %s', item.ID())
+                                else
+                                    printf("%s \agNavigating \aoself \agto \ar%s \ag ID \ar%s", mobheader, item.Name(),
+                                        item.ID())
+                                    mq.cmdf('/nav id %s', item.ID())
+                                end
                             end
                         end
-                    end
-                    ImGui.TableNextColumn()
-                    ImGui.Text(item.Level())
-                    if filter.conColor == false then
                         ImGui.TableNextColumn()
-                        ImGui.Text(item.DisplayName())
+                        ImGui.Text(item.Level() or "")
+                        if filter.conColor == false then
+                            ImGui.TableNextColumn()
+                            ImGui.Text(item.DisplayName() or "")
+                            ImGui.TableNextColumn()
+                            ImGui.Text(item.Name() or "")
+                        else
+                            local color = getConColor(item)
+                            ImGui.TableNextColumn()
+                            ImGui.TextColored(color, item.DisplayName() or "")
+                            ImGui.TableNextColumn()
+                            ImGui.TextColored(color, item.Name() or "")
+                        end
                         ImGui.TableNextColumn()
-                        ImGui.Text(item.Name())
-                    else
-                        local color = getConColor(item)
+                        ImGui.Text(string.format("%d", item.Distance() or 0))
                         ImGui.TableNextColumn()
-                        ImGui.TextColored(color, item.DisplayName())
+                        ImGui.Text(item.Loc() or "")
                         ImGui.TableNextColumn()
-                        ImGui.TextColored(color, item.Name())
-                    end
-                    ImGui.TableNextColumn()
-                    ImGui.Text(string.format("%d", item.Distance()))
-                    ImGui.TableNextColumn()
-                    ImGui.Text(item.Loc())
-                    ImGui.TableNextColumn()
-                    ImGui.Text(item.Body())
-                    ImGui.TableNextColumn()
-                    ImGui.Text(item.Race())
-                    ImGui.TableNextColumn()
-                    ImGui.Text(item.Class())
-                    ImGui.TableNextColumn()
-                    ImGui.Text(item.Surname())
-                    ImGui.TableNextColumn()
+                        ImGui.Text(item.Body() or "")
+                        ImGui.TableNextColumn()
+                        ImGui.Text(item.Race() or "")
+                        ImGui.TableNextColumn()
+                        ImGui.Text(item.Class() or "")
+                        ImGui.TableNextColumn()
+                        ImGui.Text(item.Surname() or "")
+                        ImGui.TableNextColumn()
 
-                    if direction_arrow == true then
-                        local cursorScreenPos = ImGui.GetCursorScreenPosVec()
-                        --angle = getRelativeDirection(item.HeadingTo())
-                        angle = item.HeadingTo.Degrees() - mq.TLO.Me.Heading.Degrees()
-                        DrawArrow(ImVec2(cursorScreenPos.x + size / 2, cursorScreenPos.y), 5, 15,
-                            ImVec4(0, 255, 0, 255))
+                        if direction_arrow == true then
+                            local cursorScreenPos = ImGui.GetCursorScreenPosVec()
+                            --angle = getRelativeDirection(item.HeadingTo())
+                            angle = item.HeadingTo.Degrees() - mq.TLO.Me.Heading.Degrees()
+                            DrawArrow(ImVec2(cursorScreenPos.x + size / 2, cursorScreenPos.y), 5, 15,
+                                ImVec4(0, 255, 0, 255))
+                        end
+                        ImGui.PopID()
                     end
-                    ImGui.PopID()
                 end
             end
             ImGui.EndTable()
