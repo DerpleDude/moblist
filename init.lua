@@ -20,8 +20,9 @@ local script                           = 'MobList'
 local direction_arrow                  = false
 local LoadTheme                        = require('lib.theme_loader')
 local defaults                         = require('lib.themes')
+local characterName                    = mq.TLO.Me.DisplayName()
 local themeFile                        = string.format('%s/MyThemeZ.lua', mq.configDir)
-local configFile                       = string.format('%s/moblist.lua', mq.configDir)
+local configFile                       = string.format('%s/%s_moblist.lua', mq.configDir, characterName)
 local themeName                        = 'Default'
 local theme, settings, defaultSettings = {}, {}, {}
 local mobheader                        = "\ay[\agMob List\ay]"
@@ -44,7 +45,7 @@ local filter                           = {
     ['LevelHigh']     = 135,
     ['Name']          = '',
     ['RangeLow']      = 0,
-    ['RangeHigh']     = 5000,
+    ['RangeHigh']     = 50000,
     ['Body']          = '',
     ['Race']          = '',
     ['Class']         = '',
@@ -136,6 +137,9 @@ local function loadThemeSettings()
     end
     if settings[script].LoadTheme == nil then
         settings[script].LoadTheme = themeName
+    end
+    if settings[script].locked == nil then
+        settings[script].locked = false
     end
     themeName = settings[script].LoadTheme or themeName
     for tID, tData in pairs(theme.Theme) do
@@ -318,8 +322,10 @@ local function displayGUI()
     if not openGUI then running = false end
     if mq.TLO.MacroQuest.GameState() ~= "INGAME" then return end
     local ColorCount, StyleCount = LoadTheme.StartTheme(theme.Theme[themeID])
-    openGUI, drawGUI = ImGui.Begin("Mob List##" .. myName, openGUI, window_flags)
+    local flags = settings[script].locked and bit32.bor(window_flags, ImGuiWindowFlags.NoMove, ImGuiWindowFlags.NoResize) or window_flags
+    openGUI, drawGUI = ImGui.Begin("Mob List##", openGUI, flags)
 
+    ImGui.PushFont(ImGui.GetFont(), ImGui.GetFontSize() * (1 + (28 / 100)))
     if drawGUI and not mq.TLO.Me.Zoning() then
         if ImGui.Button(gIcon .. '##MobList') then
             ImGui.OpenPopup('MobListPopup')
@@ -349,6 +355,10 @@ local function displayGUI()
             end
             if ImGui.MenuItem('Display direction arrow', '', direction_arrow) then
                 direction_arrow = not direction_arrow
+            end
+            if ImGui.MenuItem('Lock Window', '', settings[script].locked) then
+                settings[script].locked = not settings[script].locked
+                mq.pickle(configFile, settings)
             end
             ImGui.EndPopup()
         end
@@ -586,7 +596,7 @@ local function displayGUI()
                         ImGui.TextColored(color, item.Name())
                     end
                     ImGui.TableNextColumn()
-                    ImGui.Text(string.format("%.2f", item.Distance()))
+                    ImGui.Text(string.format("%d", item.Distance()))
                     ImGui.TableNextColumn()
                     ImGui.Text(item.Loc())
                     ImGui.TableNextColumn()
@@ -612,9 +622,18 @@ local function displayGUI()
             ImGui.EndTable()
         end
     end
+    ImGui.PopFont()
     LoadTheme.EndTheme(ColorCount, StyleCount)
     ImGui.End()
 end
+
+mq.bind('/moblist', function(arg)
+    if arg == 'lock' then
+        settings[script].locked = not settings[script].locked
+        mq.pickle(configFile, settings)
+        printf("%s Window %s", mobheader, settings[script].locked and '\agLocked' or '\ayUnlocked')
+    end
+end)
 
 mq.imgui.init('displayGUI', displayGUI)
 
